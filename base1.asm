@@ -15,16 +15,18 @@ DATASEG
 	tendiv db 10
 	;print1 db ?
 	;print2 db ?
-	openingMsg db "welcome to the pig game!$"
-	instructions db 10,13,10,13,"The rules are Simple:",10,13,10,13
-		db  "Your goal is to reach 100 Points!",10,13,10,13
-		db "type SPACE to roll the dice",10,13,10,13
-		db "and ENTER to save your points to ",10,13,10,13,10,13
-		db "the total amount and your turn will end",10,13,10,13
-		db "be careful because if you get 1 ",10,13,10,13
-		db "your current points will be earsed",10,13,10,13
-		db " and your turn will end!",10,13,10,13,10,13
-		db "       to continue type SPACE",'$'
+	openingMsg db 4,"welcome to the pig game!",4,'$'
+	instructions db "          The rules are Simple:",10,13,10,13
+		db  254,"Your goal is to reach 100 Points!",10,13,10,13
+		db 254,"Type SPACE to roll the dice.",10,13,10,13
+		db 254,"Type ENTER to save your points to ",10,13,10,13
+		db "the total amount and your turn will end.",10,13,10,13
+		db 254,"Be careful!",10,13,10,13
+		db " If you get 1, your turn will end ",10,13,10,13
+		db "and your current points will be gone!",10,13,10,13
+		db 254,"Type r in the end of the game",10,13,10,13
+		db "   to restart.",10,13,10,13
+		db "      ",16,"to continue type SPACE",17,'$'
 	
 	totalSquare db '   ',201,205,205,205,205,205,205,205,187, '              ',201,205,205,205,205,205,205,205,187  ,10,13
 		db '   ',186,' ',84,79,84,65,76,' ',186,'              ',186,' ',84,79,84,65,76,' ',186,10,13
@@ -83,6 +85,7 @@ DATASEG
 	ErrorMsg db 'Error', 13, 10 ,'$'
 	winner_msg1 db 'Player 1 is the Winner!$'
 	winner_msg2 db 'Player 2 is the Winner!$'
+	restartMsg db 'Type r to restart the game$'
 
 ; --------------------------
 
@@ -238,10 +241,13 @@ push ax
 	int 10h
 	mov ax, 13h
 	int 10h
+	mov [help],0
+	xor si,si
 pop ax
 ret
 endp openPig
 ;end opening picture procs
+;sounds
 proc makeSound; צליל שלוחצים על המקלדת
 	push ax
 	
@@ -421,7 +427,9 @@ endp failSound
  call victoryC
  ret
  endp victorySound
-proc Print
+ ;end sounds
+ 
+proc Print;print numbers
 	push dx
 	push ax
 	mov bh, 0 ; page number
@@ -471,6 +479,7 @@ call drawSqure
 pop bx
 ret
 endp player1Turn_sign
+
 proc player2Turn_sign
 push bx
 mov [color],3
@@ -482,6 +491,29 @@ call drawSqure
 pop bx
 ret
 endp player2Turn_sign
+proc endPlayer1_sign
+push bx
+mov [color], 0
+mov bx, [x1_coordinate]
+mov [x_coordinate],bx
+mov bx, [y1_coordinate]
+mov [y_coordinate],bx
+call drawSqure
+pop bx
+ret
+endp endPlayer1_sign
+proc endPlayer2_sign
+push bx
+mov [color],0
+mov bx, [x2_coordinate]
+mov [x_coordinate],bx
+mov bx, [y2_coordinate]
+mov [y_coordinate],bx
+call drawSqure
+pop bx
+ret
+endp endPlayer2_sign
+
 proc drawSqure
 	push ax
 	push bx
@@ -508,8 +540,8 @@ proc drawSqure
 	mov bx, [x_coordinate]
 	mov [temp_x], bx
 	;the amount of rows
-	dec [len_row]
-	cmp [len_row],0
+	dec [temp_row]
+	cmp [temp_row],0
 	jne squre
 	pop dx
 	pop cx
@@ -741,6 +773,7 @@ proc winner
 	mov ah,1
 	int 21h
 	call openPic
+	
 	pop dx
 	pop bx
 	pop cx;In order to not lose al
@@ -829,23 +862,33 @@ proc manageGame
 	
 ret
 endp manageGame
+proc Player1
+	call endPlayer2_sign
+	call player1Turn_sign
+	call restartCurrent2
+ret
+endp Player1
+proc Player2
+	call endPlayer1_sign
+	call player2Turn_sign
+	call restartCurrent1
+ret
+endp Player2
+
 
 start:
 	mov ax, @data
 	mov ds, ax
 ; --------------------------
 startGame:
-	;mov ax, 13h
-	;int 10h
 	call openPig
-	mov [help],0
-	xor si,si
 	;instructions and print base BG
 	call manageGame
 	
 	player1_Turn:
-	;call player1Turn_sign
-	call restartCurrent2
+	
+	;sign whose turn is it- later combine them*
+	call Player1
 	checkRoll1:
 	mov ah, 0h
 	int 16h
@@ -878,8 +921,9 @@ startGame:
 	jmp player2_Turn
 	
 	player2_Turn:
-	;call player2Turn_sign
-	call restartCurrent1
+	
+	call Player2
+	
 	checkRoll2:
 	mov ah, 0h
 	int 16h
